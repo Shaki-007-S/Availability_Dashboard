@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Availability Loss Tree · Shwapno</title>
+<script src="availability_data.js"></script>
+<style>
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --surface-2:#F7F9FB; --surface-3:#F0F3F6;
+  --ink:#14202E; --muted:#64707E; --faint:#95A0AC;
+  --line:#E4E9EE; --line-2:#EDF1F4;
+  --brand:#0B6E5B; --brand-strong:#084F42; --brand-soft:#E6F2EF;
+  --good:#12805C; --good-soft:#E7F4EE;
+  --warn:#A66A12; --warn-soft:#FBF0DC;
+  --bad:#D64141; --bad-soft:#FBE9E9;
+  --blue:#2563A8; --blue-soft:#E7EFF8;
+  --spot-bg:#131B26; --spot-bg-2:#1B2733; --spot-line:#2C3A48;
+  --coral:#FF7A59; --coral-dim:#E8623F; --amber:#F5B851;
+  --radius:12px; --radius-sm:8px; --radius-lg:16px;
+  --shadow-sm:0 1px 2px rgba(20,32,46,.05),0 1px 3px rgba(20,32,46,.06);
+  --shadow-md:0 4px 14px rgba(20,32,46,.08);
+  --shadow-pop:0 10px 34px rgba(20,32,46,.16);
+  --mono:"SFMono-Regular",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+.app{display:flex;min-height:100vh}
+
+/* ---------------- Left rail ---------------- */
+.rail{width:210px;flex:0 0 210px;background:var(--spot-bg);color:#C7D0DA;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brandmark{padding:20px 20px 16px;border-bottom:1px solid var(--spot-line)}
+.brandmark .bt{font-weight:700;font-size:15px;color:#fff;letter-spacing:-.2px}
+.brandmark .bs{font-size:11px;color:#7C8B9B;margin-top:3px;letter-spacing:.3px;text-transform:uppercase}
+.brandmark .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--brand) 0%,#0e8a72 100%);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;margin-bottom:12px}
+.nav{padding:12px 12px;flex:1}
+.mi{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;color:#AEBAC7;cursor:pointer;font-weight:500;font-size:13.5px;margin-bottom:3px;transition:.13s}
+.mi:hover{background:rgba(255,255,255,.05);color:#E6ECF2}
+.mi.on{background:var(--brand);color:#fff;box-shadow:0 2px 10px rgba(11,110,91,.4)}
+.mi .ic{width:16px;text-align:center;font-size:14px;opacity:.9}
+.railfoot{padding:14px 20px;border-top:1px solid var(--spot-line);font-size:10.5px;color:#63717F;line-height:1.5}
+
+/* ---------------- Main ---------------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{padding:22px 30px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.hdr-title{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.hdr .sub{color:var(--muted);font-size:13px;margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--good);display:inline-block}
+.hdr-meta{text-align:right;color:var(--faint);font-size:11.5px;line-height:1.6;white-space:nowrap}
+.hdr-meta b{color:var(--muted);font-weight:600}
+
+/* ---------------- Filter bar ---------------- */
+.filterbar{margin:18px 30px 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:14px 16px;display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.fgroup{display:flex;flex-direction:column;gap:5px}
+.fgroup .eyebrow{font-size:10.5px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+.fgroup select{appearance:none;background:var(--surface-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%2364707E'/></svg>") no-repeat right 11px center;
+  border:1px solid var(--line);border-radius:9px;padding:8px 30px 8px 11px;font-size:13px;font-family:inherit;color:var(--ink);cursor:pointer;min-width:150px;font-weight:500;transition:.13s}
+.fgroup select:hover{border-color:#CBD4DC}
+.fgroup select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.fgroup.date select{min-width:140px}
+.fgroup.cat select{min-width:220px}
+.resetBtn{margin-left:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:.13s;height:36px}
+.resetBtn:hover{background:var(--bad-soft);color:var(--bad);border-color:#F0CccC}
+
+/* ---------------- Content ---------------- */
+.content{padding:22px 30px 40px}
+.panel-page{display:none}
+.panel-page.on{display:block}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.kpi .kl{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px}
+.kpi .kv{font-size:26px;font-weight:700;letter-spacing:-.6px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .ksub{font-size:11.5px;color:var(--muted);margin-top:7px;font-variant-numeric:tabular-nums}
+.kpi.accent{background:linear-gradient(135deg,#0b6e5b 0%,#0e8a72 100%);border-color:transparent;color:#fff}
+.kpi.accent .kl{color:rgba(255,255,255,.7)}
+.kpi.accent .kv{color:#fff}
+.kpi.accent .ksub{color:rgba(255,255,255,.82)}
+.kpi .strip{position:absolute;left:0;top:0;bottom:0;width:3px}
+.kpi.good .strip{background:var(--good)} .kpi.bad .strip{background:var(--bad)} .kpi.blue .strip{background:var(--blue)}
+
+/* Panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:20px;overflow:hidden}
+.panel-h{padding:15px 20px;border-bottom:1px solid var(--line-2);display:flex;justify-content:space-between;align-items:center;gap:14px}
+.panel-h .pt{font-size:14.5px;font-weight:700;letter-spacing:-.2px}
+.panel-h .pd{font-size:11.5px;color:var(--faint)}
+.panel-b{padding:6px 8px 12px}
+.grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:20px}
+@media(max-width:1150px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------------- Loss tree ---------------- */
+table.tree{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.tree td{padding:6.5px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+table.tree tr:last-child td{border-bottom:none}
+.tn-name{display:flex;align-items:center;gap:8px;font-size:13px}
+.tn-bar{position:relative;height:9px;border-radius:5px;background:var(--surface-3);overflow:hidden;min-width:90px}
+.tn-bar > i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.tn-val{text-align:right;font-weight:600;font-size:13px;width:78px;white-space:nowrap}
+.tn-pct{text-align:right;font-size:12.5px;color:var(--muted);width:64px;font-weight:600}
+.impchip{font-size:9px;font-weight:700;letter-spacing:.4px;color:var(--coral-dim);background:#FFF0EB;border:1px solid #FBD9CE;border-radius:5px;padding:1px 5px;text-transform:uppercase}
+.lvl0 .tn-name{font-weight:700;font-size:13.5px}
+.lvl1 .tn-name{font-weight:600}
+.tree tr.lvl2{background:var(--surface-2)}
+.tree tr.lvl2 .tn-name{font-weight:600}
+.tree tr.sec td{border-top:2px solid var(--line)}
+.muted-row .tn-name,.muted-row .tn-val,.muted-row .tn-pct{color:var(--faint)}
+
+/* ---------------- Matrix (RHO / Zonal) ---------------- */
+.mtxwrap{overflow-x:auto;position:relative}
+table.mtx{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;font-size:12px;min-width:100%}
+table.mtx th,table.mtx td{padding:7px 8px;border-bottom:1px solid var(--line-2);white-space:nowrap;text-align:center}
+table.mtx thead th{position:sticky;top:0;background:var(--surface);z-index:2;font-size:11px;font-weight:700;color:var(--muted);border-bottom:2px solid var(--line);padding:9px 8px}
+table.mtx .rowlab{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;font-weight:500;min-width:290px;max-width:290px;box-shadow:1px 0 0 var(--line-2)}
+table.mtx thead .rowlab{z-index:3;background:var(--surface)}
+table.mtx tr.lvl2 .rowlab{font-weight:700;background:var(--surface-2)}
+table.mtx tr.lvl2 td{background:var(--surface-2)}
+table.mtx tr.lvl0 .rowlab,table.mtx tr.lvl1 .rowlab{font-weight:700}
+.rowlab .in{display:flex;align-items:center;gap:7px}
+.mcell{font-weight:600;border-radius:5px}
+.colname{display:flex;flex-direction:column;align-items:center;gap:2px}
+.colname .cn-sub{font-size:9.5px;color:var(--faint);font-weight:600}
+
+/* ---------------- Leaderboard ---------------- */
+.lb{display:flex;flex-direction:column;gap:2px;padding:4px 6px}
+.lbrow{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:7px 10px;border-radius:8px;transition:.1s}
+.lbrow:hover{background:var(--surface-2)}
+.lbrank{font-size:11px;font-weight:700;color:var(--faint);text-align:center;font-variant-numeric:tabular-nums}
+.lbname{font-size:12.5px;font-weight:600;min-width:0}
+.lbname .rn{font-size:10.5px;color:var(--faint);font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbbar{height:7px;border-radius:4px;background:var(--surface-3);position:relative;overflow:hidden;margin-top:5px}
+.lbbar > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.lbval{text-align:right;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lbval .vs{font-size:10.5px;color:var(--faint);font-weight:600;margin-left:5px}
+
+.legend{display:flex;gap:14px;align-items:center;font-size:11px;color:var(--muted);padding:2px 14px 10px}
+.legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.hint{font-size:11.5px;color:var(--faint);padding:0 14px 12px}
+.empty{padding:40px;text-align:center;color:var(--faint);font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- RAIL -->
+  <aside class="rail">
+    <div class="brandmark">
+      <div class="logo">A</div>
+      <div class="bt">Availability</div>
+      <div class="bs">Loss Tree · Shwapno</div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="mi on" data-page="summary"><span class="ic">▤</span> Summary</div>
+      <div class="mi" data-page="rho"><span class="ic">◱</span> RHO</div>
+      <div class="mi" data-page="zonal"><span class="ic">◲</span> Zonal</div>
+    </nav>
+    <div class="railfoot" id="railfoot">Data build —</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="hdr">
+      <div>
+        <div class="hdr-title" id="pageTitle">Summary</div>
+        <div class="sub"><span class="dot"></span><span id="subLine">—</span></div>
+      </div>
+      <div class="hdr-meta" id="hdrMeta"></div>
+    </div>
+
+    <div class="filterbar">
+      <div class="fgroup date"><span class="eyebrow">Date</span>
+        <select id="fDate"></select></div>
+      <div class="fgroup cat"><span class="eyebrow">Category (L4)</span>
+        <select id="fCat"></select></div>
+      <div class="fgroup"><span class="eyebrow">RHO</span>
+        <select id="fRho"></select></div>
+      <div class="fgroup"><span class="eyebrow">Zonal</span>
+        <select id="fZon"></select></div>
+      <button class="resetBtn" id="reset">Reset filters</button>
+    </div>
+
+    <div class="content">
+      <!-- ============ SUMMARY ============ -->
+      <section class="panel-page on" id="page-summary">
+        <div class="kpis" id="sumKpis"></div>
+        <div class="grid2">
+          <div class="panel">
+            <div class="panel-h"><div class="pt">Availability Loss Tree</div>
+              <div class="pd" id="treeScope">All categories</div></div>
+            <div class="panel-b"><table class="tree" id="treeTbl"></table></div>
+          </div>
+          <div>
+            <div class="panel">
+              <div class="panel-h"><div class="pt">Where availability is lost</div>
+                <div class="pd">share of assortment</div></div>
+              <div class="panel-b"><div id="lossBars" style="padding:8px 12px"></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><div class="pt">Biggest loss reasons</div>
+                <div class="pd">top terminal buckets</div></div>
+              <div class="panel-b"><div class="lb" id="topReasons"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RHO ============ -->
+      <section class="panel-page" id="page-rho">
+        <div class="kpis" id="rhoKpis"></div>
+        <div class="panel">
+          <div class="panel-h"><div class="pt">Availability leaderboard · by RHO</div>
+            <div class="pd">availability % · best to worst</div></div>
+          <div class="panel-b"><div class="lb" id="rhoLb"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div class="pt">Loss tree · % within each RHO</div>
+            <div class="pd" id="rhoMtxScope"></div></div>
+          <div class="legend"><span><span class="sw" style="background:var(--good-soft)"></span>available</span>
+            <span><span class="sw" style="background:#FFF3E0"></span>lower loss</span>
+            <span><span class="sw" style="background:#F6C9A6"></span>higher loss</span>
+            <span><span class="sw" style="background:#E8623F"></span>hotspot</span></div>
+          <div class="panel-b"><div class="mtxwrap"><table class="mtx" id="rhoMtx"></table></div></div>
+        </div>
+      </section>
+
+      <!-- ============ ZONAL ============ -->
+      <section class="panel-page" id="page-zonal">
+        <div class="kpis" id="zonKpis"></div>
+        <div class="panel">
+          <div class="panel-h"><div class="pt">Availability leaderboard · by Zonal</div>
+            <div class="pd">availability % · best to worst</div></div>
+          <div class="panel-b"><div class="lb" id="zonLb"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div class="pt">Loss tree · % within each Zonal</div>
+            <div class="pd" id="zonMtxScope"></div></div>
+          <div class="legend"><span><span class="sw" style="background:var(--good-soft)"></span>available</span>
+            <span><span class="sw" style="background:#FFF3E0"></span>lower loss</span>
+            <span><span class="sw" style="background:#F6C9A6"></span>higher loss</span>
+            <span><span class="sw" style="background:#E8623F"></span>hotspot</span></div>
+          <div class="hint">Scroll horizontally to see all zonal leaders. Use the Zonal filter to focus on one.</div>
+          <div class="panel-b"><div class="mtxwrap"><table class="mtx" id="zonMtx"></table></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const D = window.AVAILABILITY_DATA;
+const NODES = D.nodes, LEAVES = D.leaves;
+const LI = Object.fromEntries(LEAVES.map((l,i)=>[l,i]));
+NODES.forEach(n=> n._li = n.leaves.map(l=>LI[l]));
+const NODE_BY = Object.fromEntries(NODES.map(n=>[n.id,n]));
+const ALL='__all__';
+
+const LEAF_LABEL = {
+  AVAIL:'Available', DSD_NOTDELIV:'DSD not delivered by vendor', DSD_SOLDOUT:'DSD delivered but sold out',
+  DSD_PO_NA:'DSD PO not available', RECV_FULL:'STO received but sold out',
+  PEND_STOCKOK:'STO pending · DC stock available', PEND_PONOTCREATED:'STO pending · DC PO not created',
+  PEND_PENDINGPO:'STO pending · DC PO pending', PEND_DELIVOOS:'STO pending · DC PO delivered, OOS',
+  STO0_STOCKOK:'No STO · DC stock available', STO0_PODELIVERED:'No STO · DC PO delivered, OOS',
+  STO0_POPENDING:'DC PO pending (no STO)', STO0_PONOTRAISED:'DC PO not raised (30d)'
+};
+
+const state = { date:D.dates[D.dates.length-1].iso, cat:ALL, rho:ALL, zon:ALL, page:'summary' };
+const fmt = n => n.toLocaleString('en-US');
+const pct = (v,d) => d>0 ? (v/d*100) : 0;
+const pf  = x => (x>=9.95?x.toFixed(0):x.toFixed(1))+'%';
+
+/* -------- core aggregation -------- */
+function dd(){ return D.byDate[state.date]; }
+
+function leafTotals({catF=state.cat, rhoF=state.rho, zonF=state.zon}={}){
+  const d=dd();
+  const ci = catF===ALL?-1:d.cats.indexOf(catF);
+  const ri = rhoF===ALL?-1:d.rhos.indexOf(rhoF);
+  const zi = zonF===ALL?-1:d.zons.indexOf(zonF);
+  const t = new Array(LEAVES.length).fill(0);
+  const R=d.rows;
+  for(let k=0;k<R.length;k++){const r=R[k];
+    if(ci>=0&&r[0]!==ci)continue; if(ri>=0&&r[1]!==ri)continue; if(zi>=0&&r[2]!==zi)continue;
+    t[r[3]]+=r[4];}
+  return t;
+}
+const nodeVal=(node,lt)=>{let s=0;for(const i of node._li)s+=lt[i];return s;};
+
+/* per-column leaf totals for a breakdown dim (1=rho,2=zon) with the current filters */
+function matrix(dim){
+  const d=dd();
+  const ci = state.cat===ALL?-1:d.cats.indexOf(state.cat);
+  const otherRi = (dim===2 && state.rho!==ALL)?d.rhos.indexOf(state.rho):-1;
+  const otherZi = (dim===1 && state.zon!==ALL)?d.zons.indexOf(state.zon):-1;
+  const cols = (dim===1?d.rhos:d.zons);
+  const M = cols.map(()=>new Array(LEAVES.length).fill(0));
+  const R=d.rows;
+  for(let k=0;k<R.length;k++){const r=R[k];
+    if(ci>=0&&r[0]!==ci)continue;
+    if(otherRi>=0&&r[1]!==otherRi)continue;
+    if(otherZi>=0&&r[2]!==otherZi)continue;
+    M[r[dim]][r[3]]+=r[4];}
+  return {cols,M};
+}
+
+/* -------- filter UI -------- */
+function fillSelect(el,items,firstLabel,firstVal){
+  el.innerHTML='';
+  const o0=document.createElement('option');o0.value=firstVal;o0.textContent=firstLabel;el.appendChild(o0);
+  items.forEach(it=>{const o=document.createElement('option');
+    o.value=(typeof it==='object'?it.iso:it); o.textContent=(typeof it==='object'?it.label:it); el.appendChild(o);});
+}
+function refreshFilterOptions(){
+  const d=dd();
+  fillSelect(document.getElementById('fCat'), d.cats, 'All Categories', ALL);
+  fillSelect(document.getElementById('fRho'), d.rhos, 'All RHO', ALL);
+  fillSelect(document.getElementById('fZon'), d.zons, 'All Zonal', ALL);
+  document.getElementById('fCat').value=state.cat;
+  document.getElementById('fRho').value=state.rho;
+  document.getElementById('fZon').value=state.zon;
+}
+
+/* -------- header -------- */
+function scopeText(){
+  const p=[];
+  if(state.cat!==ALL)p.push(state.cat);
+  if(state.rho!==ALL)p.push('RHO: '+state.rho);
+  if(state.zon!==ALL)p.push('Zonal: '+state.zon);
+  return p.length?p.join(' · '):'All categories · all outlets';
+}
+function updateHeader(){
+  const dlabel=D.dates.find(x=>x.iso===state.date).label;
+  document.getElementById('pageTitle').textContent={summary:'Summary',rho:'RHO',zonal:'Zonal'}[state.page];
+  document.getElementById('subLine').textContent=dlabel+'  ·  '+scopeText();
+  const asrt=dd().rows.reduce((a,r)=>a+r[4],0);
+  document.getElementById('hdrMeta').innerHTML=
+    `As of <b>${dlabel}</b><br>${fmt(asrt)} assortment points · ${dd().cats.length} categories`;
+  document.getElementById('railfoot').textContent='Data build '+(D.generated||'').slice(0,10)+' · '+D.dates.length+' week'+(D.dates.length>1?'s':'')+' loaded';
+}
+
+/* -------- KPI helper -------- */
+function kpi(cls,label,val,sub){
+  return `<div class="kpi ${cls}"><span class="strip"></span><div class="kl">${label}</div>
+    <div class="kv">${val}</div><div class="ksub">${sub}</div></div>`;
+}
+
+/* ==================== SUMMARY ==================== */
+function renderSummary(){
+  const lt=leafTotals();
+  const asrt=nodeVal(NODE_BY.assortment,lt);
+  const avail=nodeVal(NODE_BY.available,lt);
+  const navail=asrt-avail;
+
+  // biggest single loss leaf (exclude AVAIL)
+  let bi=-1,bv=-1;
+  for(let i=0;i<LEAVES.length;i++){ if(LEAVES[i]==='AVAIL')continue; if(lt[i]>bv){bv=lt[i];bi=i;} }
+
+  document.getElementById('sumKpis').innerHTML =
+    kpi('accent','Availability', pf(pct(avail,asrt)), fmt(avail)+' of '+fmt(asrt)) +
+    kpi('bad','Not available', pf(pct(navail,asrt)), fmt(navail)+' points') +
+    kpi('blue','Assortment points', fmt(asrt), 'SKU × outlet tracked') +
+    kpi('good','Biggest loss lever', pf(pct(bv,asrt)), (bi>=0?LEAF_LABEL[LEAVES[bi]]:'—'));
+
+  document.getElementById('treeScope').textContent=scopeText();
+
+  // tree table
+  const rows=NODES.map(n=>{
+    const v=nodeVal(n,lt), p=pct(v,asrt);
+    const isAvail=n.id==='available';
+    const isRoot=n.level===0;
+    const barColor = isAvail?'var(--good)': (n.level===0?'var(--ink)': lossColor(p));
+    const barW = Math.min(100, isRoot?100:p*1.0 + (p>0?2:0));
+    const indent = n.level*15;
+    const sec = (n.id==='dc_items')?'sec':'';
+    const muted = (v===0 && n.level>=3)?'muted-row':'';
+    return `<tr class="lvl${n.level} ${sec} ${muted}">
+      <td><div class="tn-name" style="padding-left:${indent}px">
+        ${n.label}${n.imp?' <span class="impchip">Imp</span>':''}</div></td>
+      <td class="tn-val">${v?fmt(v):'–'}</td>
+      <td class="tn-pct">${v?pf(p):'0%'}</td>
+      <td style="width:32%"><div class="tn-bar"><i style="width:${barW}%;background:${barColor}"></i></div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('treeTbl').innerHTML=rows;
+
+  // loss bars: available vs DSD loss vs DC loss
+  const dsdLoss=nodeVal(NODE_BY.dsd_items,lt), dcLoss=nodeVal(NODE_BY.dc_items,lt);
+  const segs=[['Available',avail,'var(--good)'],['DC-driven loss',dcLoss,'var(--coral)'],['DSD-driven loss',dsdLoss,'var(--amber)']];
+  document.getElementById('lossBars').innerHTML = segs.map(([lab,v,c])=>`
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+        <span style="font-weight:600">${lab}</span>
+        <span style="color:var(--muted);font-weight:600">${fmt(v)} · ${pf(pct(v,asrt))}</span></div>
+      <div class="tn-bar" style="height:11px"><i style="width:${pct(v,asrt)}%;background:${c}"></i></div>
+    </div>`).join('');
+
+  // top reasons leaderboard (terminal leaves)
+  const order=LEAVES.map((l,i)=>({l,i,v:lt[i]})).filter(x=>x.l!=='AVAIL'&&x.v>0).sort((a,b)=>b.v-a.v).slice(0,8);
+  const mx=order.length?order[0].v:1;
+  document.getElementById('topReasons').innerHTML = order.map((x,idx)=>`
+    <div class="lbrow"><div class="lbrank">${idx+1}</div>
+      <div class="lbname">${LEAF_LABEL[x.l]}
+        <div class="lbbar"><i style="width:${x.v/mx*100}%;background:${lossColor(pct(x.v,asrt))}"></i></div></div>
+      <div class="lbval">${fmt(x.v)}<span class="vs">${pf(pct(x.v,asrt))}</span></div></div>`).join('')
+      || '<div class="empty">No unavailability in this slice.</div>';
+}
+function lossColor(p){ // 0..~25 -> amber to red
+  const t=Math.min(1,p/22);
+  const a=[245,184,81], b=[214,65,65];
+  const c=a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/* ==================== MATRIX PAGES (RHO / ZONAL) ==================== */
+function heat(p,isAvail){
+  if(isAvail){const t=Math.min(1,p/100);const bg=[231,244,238],fg=[18,128,92];
+    const c=bg.map((v,i)=>Math.round(v+(fg[i]-v)*t*0.55));return `background:rgb(${c[0]},${c[1]},${c[2]})`;}
+  if(p<=0)return 'color:var(--faint)';
+  const t=Math.min(1,p/25);
+  const stops=[[255,255,255],[255,243,224],[246,201,166],[232,98,63]];
+  const seg=t*(stops.length-1);const i=Math.floor(seg),f=seg-i;
+  const a=stops[i],b=stops[Math.min(i+1,stops.length-1)];
+  const c=a.map((v,k)=>Math.round(v+(b[k]-v)*f));
+  const dark=t>0.62;
+  return `background:rgb(${c[0]},${c[1]},${c[2]})${dark?';color:#fff':''}`;
+}
+
+function renderMatrixPage(dim){
+  const isRho=dim===1;
+  const {cols,M}=matrix(dim);
+  // per-column totals + availability
+  let colData=cols.map((name,ci)=>{
+    const lt=M[ci]; const asrt=nodeVal(NODE_BY.assortment,lt); const av=nodeVal(NODE_BY.available,lt);
+    return {name,ci,lt,asrt,av,avpct:pct(av,asrt)};
+  }).filter(c=>c.asrt>0);
+  // if a specific breakdown value is selected, keep only it
+  const selfFilter = isRho?state.rho:state.zon;
+  if(selfFilter!==ALL) colData=colData.filter(c=>c.name===selfFilter);
+  // order columns by availability desc for readability
+  colData.sort((a,b)=>b.avpct-a.avpct);
+
+  // ---- KPIs
+  const totLt=leafTotals(); // respects all filters
+  const tAs=nodeVal(NODE_BY.assortment,totLt), tAv=nodeVal(NODE_BY.available,totLt);
+  const best=colData[0], worst=colData[colData.length-1];
+  const kEl=document.getElementById(isRho?'rhoKpis':'zonKpis');
+  kEl.innerHTML =
+    kpi('accent','Availability (scope)', pf(pct(tAv,tAs)), fmt(tAv)+' of '+fmt(tAs)) +
+    kpi('blue',(isRho?'RHOs':'Zonals')+' shown', String(colData.length), 'columns in view') +
+    kpi('good','Best availability', best?pf(best.avpct):'—', best?best.name:'') +
+    kpi('bad','Needs attention', worst?pf(worst.avpct):'—', worst?worst.name:'');
+
+  // ---- leaderboard
+  const lb=document.getElementById(isRho?'rhoLb':'zonLb');
+  lb.innerHTML=colData.map((c,idx)=>{
+    // worst reason for this column
+    let bi=-1,bv=-1;for(let i=0;i<LEAVES.length;i++){if(LEAVES[i]==='AVAIL')continue;if(c.lt[i]>bv){bv=c.lt[i];bi=i;}}
+    return `<div class="lbrow"><div class="lbrank">${idx+1}</div>
+      <div class="lbname">${c.name}
+        <div class="rn">top loss: ${bi>=0?LEAF_LABEL[LEAVES[bi]]:'—'}</div>
+        <div class="lbbar"><i style="width:${c.avpct}%;background:${c.avpct>=80?'var(--good)':c.avpct>=70?'var(--amber)':'var(--coral)'}"></i></div></div>
+      <div class="lbval">${pf(c.avpct)}<span class="vs">avail</span></div></div>`;
+  }).join('') || '<div class="empty">No data in this slice.</div>';
+
+  document.getElementById(isRho?'rhoMtxScope':'zonMtxScope').textContent=scopeText();
+
+  // ---- matrix
+  const tbl=document.getElementById(isRho?'rhoMtx':'zonMtx');
+  if(!colData.length){tbl.innerHTML='<tr><td class="empty">No data.</td></tr>';return;}
+  let head='<thead><tr><th class="rowlab">Loss tree node</th>'+
+    colData.map(c=>`<th><div class="colname">${c.name}<span class="cn-sub">${pf(c.avpct)}</span></div></th>`).join('')+'</tr></thead>';
+  let body='<tbody>'+NODES.map(n=>{
+    const indent=n.level*13;
+    const cells=colData.map(c=>{
+      const v=nodeVal(n,c.lt), p=pct(v,c.asrt);
+      const isAvail=n.id==='available'||n.id==='assortment';
+      const style=n.id==='assortment'?'font-weight:700':heat(p,n.id==='available');
+      const disp=n.id==='assortment'?fmt(v):(v?pf(p):'·');
+      return `<td class="mcell" style="${style}">${disp}</td>`;
+    }).join('');
+    return `<tr class="lvl${n.level}"><td class="rowlab"><div class="in" style="padding-left:${indent}px">${n.label}${n.imp?' <span class="impchip">Imp</span>':''}</div></td>${cells}</tr>`;
+  }).join('')+'</tbody>';
+  tbl.innerHTML=head+body;
+}
+
+/* ==================== render dispatch ==================== */
+function render(){
+  updateHeader();
+  if(state.page==='summary')renderSummary();
+  else renderMatrixPage(state.page==='rho'?1:2);
+}
+
+/* ==================== events ==================== */
+document.getElementById('nav').addEventListener('click',e=>{
+  const mi=e.target.closest('.mi'); if(!mi)return;
+  state.page=mi.dataset.page;
+  document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('on',x===mi));
+  document.querySelectorAll('.panel-page').forEach(p=>p.classList.toggle('on',p.id==='page-'+state.page));
+  render();
+});
+document.getElementById('fDate').addEventListener('change',e=>{
+  state.date=e.target.value;
+  // clamp filters that no longer exist in the new date
+  const d=dd();
+  if(state.cat!==ALL&&!d.cats.includes(state.cat))state.cat=ALL;
+  if(state.rho!==ALL&&!d.rhos.includes(state.rho))state.rho=ALL;
+  if(state.zon!==ALL&&!d.zons.includes(state.zon))state.zon=ALL;
+  refreshFilterOptions(); render();
+});
+document.getElementById('fCat').addEventListener('change',e=>{state.cat=e.target.value;render();});
+document.getElementById('fRho').addEventListener('change',e=>{state.rho=e.target.value;render();});
+document.getElementById('fZon').addEventListener('change',e=>{state.zon=e.target.value;render();});
+document.getElementById('reset').addEventListener('click',()=>{
+  state.cat=ALL;state.rho=ALL;state.zon=ALL;
+  refreshFilterOptions();render();
+});
+
+/* ==================== init ==================== */
+fillSelect(document.getElementById('fDate'), D.dates, D.dates[0].label, D.dates[0].iso);
+document.getElementById('fDate').value=state.date;
+refreshFilterOptions();
+render();
+</script>
+</body>
+</html>
