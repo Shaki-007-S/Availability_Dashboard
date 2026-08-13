@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Availability Loss Tree · Shwapno</title>
-<!-- data loaded at runtime from availability_data.json -->
+<!-- data loaded at runtime from data.json -->
 <style>
 :root{
   --bg:#EEF1F5; --surface:#FFFFFF; --surface-2:#F7F9FB; --surface-3:#F0F3F6;
@@ -249,7 +249,7 @@ table.mtx tr.lvl0 .rowlab,table.mtx tr.lvl1 .rowlab{font-weight:700}
 
 <script>
 /* Data is loaded in boot() at the bottom of this script — fetched from
-   availability_data.json in the same folder. (If an inline window.AVAILABILITY_DATA
+   data.json in the same folder. (If an inline window.AVAILABILITY_DATA
    block is present, as in the standalone preview build, that is used instead.) */
 let D, NODES, LEAVES, LI, NODE_BY;
 const ALL='__all__';
@@ -519,9 +519,9 @@ function showLoadError(err){
   const c=document.querySelector('.content');
   if(c) c.innerHTML =
     '<div class="panel" style="padding:26px 28px">'+
-    '<div style="font-weight:700;font-size:15px;margin-bottom:10px">Couldn\'t load availability_data.json</div>'+
+    '<div style="font-weight:700;font-size:15px;margin-bottom:10px">Couldn\'t load data.json</div>'+
     '<div style="color:var(--muted);font-size:13px;line-height:1.65">'+
-    'This dashboard reads its data from <b>availability_data.json</b> in the same folder.<br>'+
+    'This dashboard reads its data from <b>data.json</b> in the same folder.<br>'+
     'Error: <b>'+err+'</b><br><br>'+
     'If you opened this file by double-clicking it (a <code>file://</code> address), the browser blocks pages from reading local files. '+
     'Serve the folder over HTTP instead — for example, from the dashboard folder run<br>'+
@@ -533,7 +533,7 @@ async function boot(){
   let data = window.AVAILABILITY_DATA;   // set only by the standalone preview build
   if(!data){
     try{
-      const res = await fetch('availability_data.json', {cache:'no-store'});
+      const res = await fetch('data.json', {cache:'no-store'});
       if(!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText);
       data = await res.json();
     }catch(err){ showLoadError(err); return; }
